@@ -1,3 +1,4 @@
+
 const gameCanvas = document.getElementById('gameCanvas');
 const gameCtx = gameCanvas.getContext('2d');
 const motionCanvas = document.getElementById('motionCanvas');
@@ -16,12 +17,15 @@ const player = {
   radius: 18,
 };
 
+const MOTION_THRESHOLD = 32;
+const MIN_ACTIVE_PIXELS = 50;
+
 let obstacles = [];
 let score = 0;
 let frameCounter = 0;
 let gameOver = false;
 let isRunning = false;
-let previousFrame = null;
+let previousLuma = null;
 let smoothedX = 0.5;
 
 function drawTrack() {
@@ -118,69 +122,87 @@ function mapMotionToLane(normalizedX) {
 }
 
 function processMotionFrame() {
-  if (video.readyState < 2) {
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
     requestAnimationFrame(processMotionFrame);
     return;
   }
 
-  motionCtx.drawImage(video, 0, 0, motionCanvas.width, motionCanvas.height);
-  const currentFrame = motionCtx.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
+  motionCtx.save();
+  motionCtx.scale(-1, 1);
+  motionCtx.drawImage(video, -motionCanvas.width, 0, motionCanvas.width, motionCanvas.height);
+  motionCtx.restore();
 
-  if (previousFrame) {
-    const data = currentFrame.data;
-    const prev = previousFrame.data;
+  const frame = motionCtx.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
+  const data = frame.data;
 
-    let activePixels = 0;
-    let sumX = 0;
+  let activePixels = 0;
+  let sumX = 0;
+  const currentLuma = new Uint8ClampedArray(motionCanvas.width * motionCanvas.height);
 
-    for (let i = 0; i < data.length; i += 4) {
-      const diff =
-        Math.abs(data[i] - prev[i]) +
-        Math.abs(data[i + 1] - prev[i + 1]) +
-        Math.abs(data[i + 2] - prev[i + 2]);
+  for (let i = 0; i < data.length; i += 4) {
+    const pixelIndex = i / 4;
+    const x = pixelIndex % motionCanvas.width;
+    const luma = Math.round(data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+    currentLuma[pixelIndex] = luma;
 
-      if (diff > 85) {
-        const pixelIndex = i / 4;
-        const x = pixelIndex % motionCanvas.width;
+    const prev = previousLuma ? previousLuma[pixelIndex] : luma;
+    const diff = Math.abs(luma - prev);
 
-        data[i] = 40;
-        data[i + 1] = 240;
-        data[i + 2] = 90;
-
-        activePixels += 1;
-        sumX += x;
-      } else {
-        data[i] = data[i] * 0.2;
-        data[i + 1] = data[i + 1] * 0.2;
-        data[i + 2] = data[i + 2] * 0.2;
-      }
-    }
-
-    motionCtx.putImageData(currentFrame, 0, 0);
-
-    if (activePixels > 140) {
-      const movementCenter = sumX / activePixels;
-      const normalizedX = movementCenter / motionCanvas.width;
-      smoothedX = smoothedX * 0.85 + normalizedX * 0.15;
-      player.lane = mapMotionToLane(smoothedX);
-      movementReadout.textContent = `Movement: x=${smoothedX.toFixed(2)} active=${activePixels}`;
-      if (!gameOver) {
-        statusLabel.textContent = 'Status: Tracking movement';
-      }
+    if (diff > MOTION_THRESHOLD) {
+      data[i] = 40;
+      data[i + 1] = 240;
+      data[i + 2] = 90;
+      activePixels += 1;
+      sumX += x;
     } else {
-      movementReadout.textContent = 'Movement: no strong motion detected';
+      const faded = luma * 0.2;
+      data[i] = faded;
+      data[i + 1] = faded;
+      data[i + 2] = faded;
     }
   }
 
-  previousFrame = currentFrame;
+  motionCtx.putImageData(frame, 0, 0);
+
+  if (activePixels > MIN_ACTIVE_PIXELS) {
+    const movementCenter = sumX / activePixels;
+    const normalizedX = movementCenter / motionCanvas.width;
+    smoothedX = smoothedX * 0.82 + normalizedX * 0.18;
+    player.lane = mapMotionToLane(smoothedX);
+    movementReadout.textContent = `Movement: x=${smoothedX.toFixed(2)} active=${activePixels}`;
+    if (!gameOver) {
+      statusLabel.textContent = 'Status: Tracking movement';
+    }
+    renderGame();
+  } else {
+    movementReadout.textContent = 'Movement: move left/right to control the character';
+  }
+
+  previousLuma = currentLuma;
   requestAnimationFrame(processMotionFrame);
 }
 
 async function setupCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    statusLabel.textContent = 'Status: Camera API unavailable in this browser';
+    movementReadout.textContent = 'Movement: use a modern browser on HTTPS/localhost';
+    return;
+  }
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+      },
+      audio: false,
+    });
+
     video.srcObject = stream;
+    await video.play();
     statusLabel.textContent = 'Status: Camera connected';
+    movementReadout.textContent = 'Movement: move left/right in front of the camera';
     requestAnimationFrame(processMotionFrame);
   } catch (error) {
     statusLabel.textContent = 'Status: Camera denied/unavailable';
