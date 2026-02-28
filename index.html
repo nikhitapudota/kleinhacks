@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Motion Runner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="panel game-panel">
+        <h1>Motion Runner</h1>
+        <p class="subtitle">
+          Move your body left and right in front of your webcam to dodge obstacles.
+        </p>
+        <div class="hud">
+          <span id="score">Score: 0</span>
+          <span id="status">Status: Ready</span>
+        </div>
+        <canvas id="gameCanvas" width="420" height="620" aria-label="Runner game canvas"></canvas>
+        <div class="buttons">
+          <button id="startButton">Start game</button>
+          <button id="resetButton">Reset</button>
+        </div>
+      </section>
+
+      <section class="panel camera-panel">
+        <h2>Motion Detector</h2>
+        <p class="subtitle">Green pixels indicate detected movement.</p>
+        <video id="cameraFeed" autoplay muted playsinline></video>
+        <canvas id="motionCanvas" width="320" height="240"></canvas>
+        <p id="movementReadout">Movement: waiting for camera…</p>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
