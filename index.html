@@ -33,6 +33,11 @@
           <span id="status">Status: Ready</span>
         </div>
         <canvas id="gameCanvas" width="420" height="620" aria-label="Runner game canvas"></canvas>
+        <section id="quizOverlay" class="quiz-overlay hidden" aria-live="polite" aria-label="Physics question">
+          <h3 id="quizQuestion">Question</h3>
+          <div id="quizChoices" class="quiz-choices"></div>
+          <p id="quizFeedback" class="quiz-feedback"></p>
+        </section>
         <div class="buttons">
           <button id="startButton">Start game</button>
           <button id="resetButton">Reset</button>
