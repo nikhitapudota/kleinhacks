@@ -8,6 +8,10 @@ const statusLabel = document.getElementById('status');
 const movementReadout = document.getElementById('movementReadout');
 const startButton = document.getElementById('startButton');
 const resetButton = document.getElementById('resetButton');
+const physicsConceptLabel = document.getElementById('physicsConcept');
+const speedMetricLabel = document.getElementById('speedMetric');
+const reactionMetricLabel = document.getElementById('reactionMetric');
+const coachPromptLabel = document.getElementById('coachPrompt');
 
 const lanes = [90, 210, 330];
 const player = {
@@ -27,6 +31,7 @@ const OBSTACLE_SPEED_VARIANCE = 1.1;
 const OBSTACLE_SPEED_RAMP = 0.02;
 const OBSTACLE_MAX_SPEED = 4.2;
 const OBSTACLE_SPAWN_INTERVAL = 65;
+const EDUCATION_ROTATE_INTERVAL = 8000;
 
 let obstacles = [];
 let score = 0;
@@ -35,6 +40,31 @@ let gameOver = false;
 let isRunning = false;
 let previousLuma = null;
 let smoothedMotionX = 0.5;
+let lastPlayerX = player.x;
+let lastPlayerUpdate = performance.now();
+let previousTargetX = player.targetX;
+let maxHorizontalSpeed = 0;
+let movementStartTime = null;
+let reactionMs = null;
+let conceptIndex = 0;
+const physicsConcepts = [
+  {
+    title: 'Velocity',
+    text: 'Velocity = change in position over time. Faster side-steps increase px/s.',
+  },
+  {
+    title: 'Acceleration',
+    text: 'Acceleration is how quickly your speed changes when you switch direction.',
+  },
+  {
+    title: 'Reaction Time',
+    text: 'Reaction time is delay between obstacle spawn and your first movement response.',
+  },
+  {
+    title: 'Relative Motion',
+    text: 'You move horizontally while obstacles move vertically, creating relative trajectories.',
+  },
+];
 
 function drawTrack() {
   gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
@@ -97,6 +127,8 @@ function updateGame() {
   frameCounter += 1;
   if (frameCounter % OBSTACLE_SPAWN_INTERVAL === 0) {
     spawnObstacle();
+    movementStartTime = performance.now();
+    reactionMs = null;
     score += 1;
     scoreLabel.textContent = `Score: ${score}`;
   }
@@ -107,6 +139,7 @@ function updateGame() {
     gameOver = true;
     isRunning = false;
     statusLabel.textContent = 'Status: Game over — press reset.';
+    coachPromptLabel.textContent = 'Coach: In physics terms, earlier acceleration gives you more time to clear each lane.';
   }
 
   renderGame();
@@ -135,6 +168,39 @@ function updatePlayerPosition() {
   }
 
   player.x += dx * PLAYER_FOLLOW_STRENGTH;
+}
+
+
+function updatePhysicsConcept() {
+  const concept = physicsConcepts[conceptIndex % physicsConcepts.length];
+  physicsConceptLabel.textContent = `Concept: ${concept.title} — ${concept.text}`;
+  conceptIndex += 1;
+}
+
+function updatePhysicsMetrics(now) {
+  const dt = Math.max((now - lastPlayerUpdate) / 1000, 0.001);
+  const speed = Math.abs(player.x - lastPlayerX) / dt;
+  maxHorizontalSpeed = Math.max(maxHorizontalSpeed, speed);
+
+  speedMetricLabel.textContent = `Horizontal speed: ${Math.round(speed)} px/s (max ${Math.round(maxHorizontalSpeed)} px/s)`;
+  reactionMetricLabel.textContent = reactionMs === null ? 'Reaction time: -- ms' : `Reaction time: ${reactionMs} ms`;
+
+  lastPlayerX = player.x;
+  lastPlayerUpdate = now;
+}
+
+function maybeRecordReaction(now) {
+  const movedEnough = Math.abs(player.targetX - previousTargetX) > 8;
+  if (movementStartTime !== null && reactionMs === null && movedEnough) {
+    reactionMs = Math.max(0, Math.round(now - movementStartTime));
+    coachPromptLabel.textContent = reactionMs < 450
+      ? 'Coach: Great reflexes! Low reaction times help avoid collisions.'
+      : 'Coach: Try anticipating obstacle patterns to reduce reaction time.';
+  }
+
+  if (movedEnough) {
+    previousTargetX = player.targetX;
+  }
 }
 
 function processMotionFrame() {
@@ -247,13 +313,24 @@ function resetGame() {
   player.x = gameCanvas.width / 2;
   player.targetX = gameCanvas.width / 2;
   smoothedMotionX = 0.5;
+  lastPlayerX = player.x;
+  previousTargetX = player.targetX;
+  maxHorizontalSpeed = 0;
+  movementStartTime = null;
+  reactionMs = null;
   scoreLabel.textContent = 'Score: 0';
   statusLabel.textContent = 'Status: Ready';
+  coachPromptLabel.textContent = 'Coach: Start moving to unlock physics tips.';
+  speedMetricLabel.textContent = 'Horizontal speed: 0 px/s';
+  reactionMetricLabel.textContent = 'Reaction time: -- ms';
   renderGame();
 }
 
 function animationLoop() {
   updatePlayerPosition();
+  const now = performance.now();
+  maybeRecordReaction(now);
+  updatePhysicsMetrics(now);
   renderGame();
   requestAnimationFrame(animationLoop);
 }
@@ -262,5 +339,7 @@ startButton.addEventListener('click', startGame);
 resetButton.addEventListener('click', resetGame);
 
 renderGame();
+updatePhysicsConcept();
+setInterval(updatePhysicsConcept, EDUCATION_ROTATE_INTERVAL);
 requestAnimationFrame(animationLoop);
 setupCamera();
