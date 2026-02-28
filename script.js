@@ -239,4 +239,3 @@ resetButton.addEventListener('click', resetGame);
 
 renderGame();
 setupCamera();
-
