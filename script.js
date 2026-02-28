@@ -5,6 +5,7 @@ const motionCtx = motionCanvas.getContext('2d', { willReadFrequently: true });
 const video = document.getElementById('cameraFeed');
 const scoreLabel = document.getElementById('score');
 const statusLabel = document.getElementById('status');
+const highScoreLabel = document.getElementById('highScore');
 const movementReadout = document.getElementById('movementReadout');
 const startButton = document.getElementById('startButton');
 const resetButton = document.getElementById('resetButton');
@@ -30,10 +31,10 @@ const MIN_ACTIVE_PIXELS = 50;
 const PLAYER_MIN_X = 70;
 const PLAYER_MAX_X = 350;
 const PLAYER_FOLLOW_STRENGTH = 0.42;
-const OBSTACLE_BASE_SPEED = 2.1;
-const OBSTACLE_SPEED_VARIANCE = 1.1;
-const OBSTACLE_SPEED_RAMP = 0.02;
-const OBSTACLE_MAX_SPEED = 4.2;
+const OBSTACLE_BASE_SPEED = 1.6;
+const OBSTACLE_SPEED_VARIANCE = 0.8;
+const OBSTACLE_SPEED_RAMP = 0.012;
+const OBSTACLE_MAX_SPEED = 3.2;
 const OBSTACLE_SPAWN_INTERVAL = 65;
 const COIN_SPAWN_INTERVAL = 210;
 const COIN_SPEED_BASE = 2.2;
@@ -57,6 +58,10 @@ let reactionMs = null;
 let conceptIndex = 0;
 let quizActive = false;
 let motionReadoutTick = 0;
+let noMotionFrames = 0;
+let lastMetricUpdate = 0;
+let metricReadoutTick = 0;
+let highScore = Number.parseInt(localStorage.getItem('motionRunnerHighScore') || '0', 10);
 const physicsConcepts = [
   {
     title: 'Velocity',
@@ -210,6 +215,11 @@ function updateGame() {
     reactionMs = null;
     score += 1;
     scoreLabel.textContent = `Score: ${score}`;
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem('motionRunnerHighScore', String(highScore));
+      highScoreLabel.textContent = `High score: ${highScore}`;
+    }
   }
 
   if (frameCounter % COIN_SPAWN_INTERVAL === 0) {
@@ -309,8 +319,12 @@ function updatePhysicsMetrics(now) {
   const speed = Math.abs(player.x - lastPlayerX) / dt;
   maxHorizontalSpeed = Math.max(maxHorizontalSpeed, speed);
 
-  speedMetricLabel.textContent = `Horizontal speed: ${Math.round(speed)} px/s (max ${Math.round(maxHorizontalSpeed)} px/s)`;
-  reactionMetricLabel.textContent = reactionMs === null ? 'Reaction time: -- ms' : `Reaction time: ${reactionMs} ms`;
+  metricReadoutTick += 1;
+  if (now - lastMetricUpdate > 120 || metricReadoutTick % 3 === 0) {
+    speedMetricLabel.textContent = `Horizontal speed: ${Math.round(speed / 5) * 5} px/s (max ${Math.round(maxHorizontalSpeed / 5) * 5} px/s)`;
+    reactionMetricLabel.textContent = reactionMs === null ? 'Reaction time: -- ms' : `Reaction time: ${reactionMs} ms`;
+    lastMetricUpdate = now;
+  }
 
   lastPlayerX = player.x;
   lastPlayerUpdate = now;
@@ -374,19 +388,23 @@ function processMotionFrame() {
   motionCtx.putImageData(frame, 0, 0);
 
   if (activePixels > MIN_ACTIVE_PIXELS) {
+    noMotionFrames = 0;
     const movementCenter = sumX / activePixels;
     const normalizedX = movementCenter / motionCanvas.width;
-    smoothedMotionX = smoothedMotionX * 0.55 + normalizedX * 0.45;
+    smoothedMotionX = smoothedMotionX * 0.6 + normalizedX * 0.4;
     player.targetX = mapMotionToTrackX(smoothedMotionX);
     motionReadoutTick += 1;
-    if (motionReadoutTick % 4 === 0) {
-      movementReadout.textContent = `Movement: x=${smoothedMotionX.toFixed(2)} active=${Math.round(activePixels / 10) * 10}`;
+    if (motionReadoutTick % 8 === 0) {
+      movementReadout.textContent = `Movement: x=${smoothedMotionX.toFixed(2)} active=${Math.round(activePixels / 20) * 20}`;
     }
     if (!gameOver && !isRunning && !quizActive) {
       statusLabel.textContent = 'Status: Tracking movement';
     }
   } else {
-    movementReadout.textContent = 'Movement: move left/right to control the character';
+    noMotionFrames += 1;
+    if (noMotionFrames > 10) {
+      movementReadout.textContent = 'Movement: move left/right to control the character';
+    }
   }
 
   previousLuma = currentLuma;
@@ -449,6 +467,8 @@ function resetGame() {
   maxHorizontalSpeed = 0;
   movementStartTime = null;
   reactionMs = null;
+  noMotionFrames = 0;
+  motionReadoutTick = 0;
   scoreLabel.textContent = 'Score: 0';
   quizActive = false;
   quizOverlay.classList.add('hidden');
@@ -456,6 +476,7 @@ function resetGame() {
   coachPromptLabel.textContent = 'Coach: Start moving to unlock physics tips.';
   speedMetricLabel.textContent = 'Horizontal speed: 0 px/s';
   reactionMetricLabel.textContent = 'Reaction time: -- ms';
+  highScoreLabel.textContent = `High score: ${highScore}`;
   renderGame();
 }
 
@@ -471,6 +492,7 @@ function animationLoop() {
 startButton.addEventListener('click', startGame);
 resetButton.addEventListener('click', resetGame);
 
+highScoreLabel.textContent = `High score: ${highScore}`;
 renderGame();
 updatePhysicsConcept();
 setInterval(updatePhysicsConcept, EDUCATION_ROTATE_INTERVAL);
