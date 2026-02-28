@@ -8,11 +8,26 @@
   </head>
   <body>
     <main class="layout">
+      <section class="panel info-panel">
+        <h2>Motion Detector + Physics Lab</h2>
+        <p class="subtitle">Green pixels indicate detected movement. Learn while you play.</p>
+        <canvas id="motionCanvas" width="320" height="240"></canvas>
+        <p id="movementReadout">Movement: waiting for camera…</p>
+
+        <section class="physics-lab" aria-live="polite">
+          <h3>Physics Lab</h3>
+          <p id="physicsConcept" class="concept">Concept: Waiting for movement data…</p>
+          <div class="physics-metrics">
+            <span id="speedMetric">Horizontal speed: 0 px/s</span>
+            <span id="reactionMetric">Reaction time: -- ms</span>
+          </div>
+          <p id="coachPrompt" class="coach-prompt">Coach: Start moving to unlock physics tips.</p>
+        </section>
+      </section>
+
       <section class="panel game-panel">
         <h1>Motion Runner</h1>
-        <p class="subtitle">
-          Move your body left and right in front of your webcam to dodge obstacles.
-        </p>
+        <p class="subtitle">Move your body left and right to dodge obstacles.</p>
         <div class="hud">
           <span id="score">Score: 0</span>
           <span id="status">Status: Ready</span>
@@ -25,20 +40,9 @@
       </section>
 
       <section class="panel camera-panel">
-        <h2>Motion Detector</h2>
-        <p class="subtitle">Green pixels indicate detected movement.</p>
+        <h2>Live Camera</h2>
+        <p class="subtitle">Camera feed used for body tracking.</p>
         <video id="cameraFeed" autoplay muted playsinline></video>
-        <canvas id="motionCanvas" width="320" height="240"></canvas>
-        <p id="movementReadout">Movement: waiting for camera…</p>
-        <section class="physics-lab" aria-live="polite">
-          <h3>Physics Lab</h3>
-          <p id="physicsConcept" class="concept">Concept: Waiting for movement data…</p>
-          <div class="physics-metrics">
-            <span id="speedMetric">Horizontal speed: 0 px/s</span>
-            <span id="reactionMetric">Reaction time: -- ms</span>
-          </div>
-          <p id="coachPrompt" class="coach-prompt">Coach: Start moving to unlock physics tips.</p>
-        </section>
       </section>
     </main>
 
