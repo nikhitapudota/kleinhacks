@@ -30,6 +30,15 @@
         <video id="cameraFeed" autoplay muted playsinline></video>
         <canvas id="motionCanvas" width="320" height="240"></canvas>
         <p id="movementReadout">Movement: waiting for camera…</p>
+        <section class="physics-lab" aria-live="polite">
+          <h3>Physics Lab</h3>
+          <p id="physicsConcept" class="concept">Concept: Waiting for movement data…</p>
+          <div class="physics-metrics">
+            <span id="speedMetric">Horizontal speed: 0 px/s</span>
+            <span id="reactionMetric">Reaction time: -- ms</span>
+          </div>
+          <p id="coachPrompt" class="coach-prompt">Coach: Start moving to unlock physics tips.</p>
+        </section>
       </section>
     </main>
 
