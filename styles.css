@@ -259,6 +259,10 @@ button:hover {
   color: #c7ffe2;
 }
 
+.quiz-overlay h3 {
+  color: #ffffff;
+}
+
 
 .physics-metrics span,
 #movementReadout {
