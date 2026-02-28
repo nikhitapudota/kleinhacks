@@ -12,6 +12,10 @@ const physicsConceptLabel = document.getElementById('physicsConcept');
 const speedMetricLabel = document.getElementById('speedMetric');
 const reactionMetricLabel = document.getElementById('reactionMetric');
 const coachPromptLabel = document.getElementById('coachPrompt');
+const quizOverlay = document.getElementById('quizOverlay');
+const quizQuestion = document.getElementById('quizQuestion');
+const quizChoices = document.getElementById('quizChoices');
+const quizFeedback = document.getElementById('quizFeedback');
 
 const lanes = [90, 210, 330];
 const player = {
@@ -31,9 +35,13 @@ const OBSTACLE_SPEED_VARIANCE = 1.1;
 const OBSTACLE_SPEED_RAMP = 0.02;
 const OBSTACLE_MAX_SPEED = 4.2;
 const OBSTACLE_SPAWN_INTERVAL = 65;
+const COIN_SPAWN_INTERVAL = 210;
+const COIN_SPEED_BASE = 2.2;
+const COIN_SPEED_VARIANCE = 0.7;
 const EDUCATION_ROTATE_INTERVAL = 8000;
 
 let obstacles = [];
+let coins = [];
 let score = 0;
 let frameCounter = 0;
 let gameOver = false;
@@ -47,22 +55,44 @@ let maxHorizontalSpeed = 0;
 let movementStartTime = null;
 let reactionMs = null;
 let conceptIndex = 0;
+let quizActive = false;
+let motionReadoutTick = 0;
 const physicsConcepts = [
   {
     title: 'Velocity',
     text: 'Velocity = change in position over time. Faster side-steps increase px/s.',
+    question: {
+      prompt: 'Which quantity describes change in position over time?',
+      choices: ['Velocity', 'Mass', 'Temperature'],
+      answer: 0,
+    },
   },
   {
     title: 'Acceleration',
     text: 'Acceleration is how quickly your speed changes when you switch direction.',
+    question: {
+      prompt: 'Acceleration is best described as a change in what?',
+      choices: ['Color', 'Speed over time', 'Obstacle size'],
+      answer: 1,
+    },
   },
   {
     title: 'Reaction Time',
     text: 'Reaction time is delay between obstacle spawn and your first movement response.',
+    question: {
+      prompt: 'In this game, reaction time measures the delay between obstacle spawn and your…',
+      choices: ['First movement response', 'Highest score', 'Camera startup'],
+      answer: 0,
+    },
   },
   {
     title: 'Relative Motion',
     text: 'You move horizontally while obstacles move vertically, creating relative trajectories.',
+    question: {
+      prompt: 'Relative motion here comes from your horizontal movement compared to…',
+      choices: ['Vertical obstacle movement', 'Audio volume', 'Button color'],
+      answer: 0,
+    },
   },
 ];
 
@@ -97,6 +127,19 @@ function drawObstacles() {
   });
 }
 
+function drawCoins() {
+  coins.forEach((coin) => {
+    const coinX = lanes[coin.lane];
+    gameCtx.fillStyle = '#ffd85d';
+    gameCtx.beginPath();
+    gameCtx.arc(coinX, coin.y, 14, 0, Math.PI * 2);
+    gameCtx.fill();
+    gameCtx.strokeStyle = '#f5a800';
+    gameCtx.lineWidth = 3;
+    gameCtx.stroke();
+  });
+}
+
 function spawnObstacle() {
   const lane = Math.floor(Math.random() * lanes.length);
   const scaledSpeed = OBSTACLE_BASE_SPEED + Math.min(score * OBSTACLE_SPEED_RAMP, OBSTACLE_MAX_SPEED - OBSTACLE_BASE_SPEED);
@@ -104,10 +147,43 @@ function spawnObstacle() {
   obstacles.push({ lane, y: -50, speed });
 }
 
+function spawnCoin() {
+  const lane = Math.floor(Math.random() * lanes.length);
+  coins.push({ lane, y: -30, speed: COIN_SPEED_BASE + Math.random() * COIN_SPEED_VARIANCE });
+}
+
 function moveObstacles() {
   obstacles = obstacles
     .map((obstacle) => ({ ...obstacle, y: obstacle.y + obstacle.speed }))
     .filter((obstacle) => obstacle.y < gameCanvas.height + 60);
+}
+
+function moveCoins() {
+  coins = coins
+    .map((coin) => ({ ...coin, y: coin.y + coin.speed }))
+    .filter((coin) => coin.y < gameCanvas.height + 40);
+}
+
+function checkCoinCollection() {
+  if (quizActive) {
+    return;
+  }
+
+  let collected = false;
+  coins = coins.filter((coin) => {
+    const coinX = lanes[coin.lane];
+    const closeX = Math.abs(coinX - player.x) < 28;
+    const closeY = Math.abs(coin.y - player.y) < 30;
+    const hit = closeX && closeY;
+    if (hit) {
+      collected = true;
+    }
+    return !hit;
+  });
+
+  if (collected) {
+    openQuiz();
+  }
 }
 
 function checkCollision() {
@@ -120,7 +196,10 @@ function checkCollision() {
 }
 
 function updateGame() {
-  if (!isRunning) {
+  if (!isRunning || quizActive) {
+    if (isRunning) {
+      requestAnimationFrame(updateGame);
+    }
     return;
   }
 
@@ -133,7 +212,13 @@ function updateGame() {
     scoreLabel.textContent = `Score: ${score}`;
   }
 
+  if (frameCounter % COIN_SPAWN_INTERVAL === 0) {
+    spawnCoin();
+  }
+
   moveObstacles();
+  moveCoins();
+  checkCoinCollection();
 
   if (checkCollision()) {
     gameOver = true;
@@ -152,7 +237,49 @@ function updateGame() {
 function renderGame() {
   drawTrack();
   drawObstacles();
+  drawCoins();
   drawPlayer();
+}
+
+function openQuiz() {
+  quizActive = true;
+  isRunning = false;
+
+  const concept = physicsConcepts[Math.floor(Math.random() * physicsConcepts.length)];
+  const { prompt, choices, answer } = concept.question;
+
+  quizOverlay.classList.remove('hidden');
+  quizQuestion.textContent = `${concept.title}: ${prompt}`;
+  quizFeedback.textContent = '';
+  quizChoices.innerHTML = '';
+
+  choices.forEach((choice, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'quiz-choice';
+    button.textContent = choice;
+    button.addEventListener('click', () => {
+      const correct = index === answer;
+      quizFeedback.textContent = correct ? '✅ Correct! Keep running.' : `❌ Not quite. Correct answer: ${choices[answer]}.`;
+      coachPromptLabel.textContent = correct
+        ? `Coach: Nice! You connected movement with ${concept.title.toLowerCase()}.`
+        : `Coach: Review ${concept.title.toLowerCase()} and try the next coin.`;
+
+      setTimeout(() => {
+        quizOverlay.classList.add('hidden');
+        quizActive = false;
+        if (!gameOver) {
+          isRunning = true;
+          statusLabel.textContent = 'Status: Running';
+          requestAnimationFrame(updateGame);
+        }
+      }, 900);
+    });
+
+    quizChoices.appendChild(button);
+  });
+
+  statusLabel.textContent = 'Status: Quiz time';
 }
 
 function mapMotionToTrackX(normalizedX) {
@@ -251,8 +378,11 @@ function processMotionFrame() {
     const normalizedX = movementCenter / motionCanvas.width;
     smoothedMotionX = smoothedMotionX * 0.55 + normalizedX * 0.45;
     player.targetX = mapMotionToTrackX(smoothedMotionX);
-    movementReadout.textContent = `Movement: x=${smoothedMotionX.toFixed(2)} active=${activePixels}`;
-    if (!gameOver) {
+    motionReadoutTick += 1;
+    if (motionReadoutTick % 4 === 0) {
+      movementReadout.textContent = `Movement: x=${smoothedMotionX.toFixed(2)} active=${Math.round(activePixels / 10) * 10}`;
+    }
+    if (!gameOver && !isRunning && !quizActive) {
       statusLabel.textContent = 'Status: Tracking movement';
     }
   } else {
@@ -307,6 +437,7 @@ function startGame() {
 
 function resetGame() {
   obstacles = [];
+  coins = [];
   score = 0;
   frameCounter = 0;
   gameOver = false;
@@ -319,6 +450,8 @@ function resetGame() {
   movementStartTime = null;
   reactionMs = null;
   scoreLabel.textContent = 'Score: 0';
+  quizActive = false;
+  quizOverlay.classList.add('hidden');
   statusLabel.textContent = 'Status: Ready';
   coachPromptLabel.textContent = 'Coach: Start moving to unlock physics tips.';
   speedMetricLabel.textContent = 'Horizontal speed: 0 px/s';
