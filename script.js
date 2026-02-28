@@ -17,6 +17,7 @@ const quizOverlay = document.getElementById('quizOverlay');
 const quizQuestion = document.getElementById('quizQuestion');
 const quizChoices = document.getElementById('quizChoices');
 const quizFeedback = document.getElementById('quizFeedback');
+const themeToggle = document.getElementById('themeToggle');
 
 const lanes = [90, 210, 330];
 const player = {
@@ -100,6 +101,25 @@ const physicsConcepts = [
     },
   },
 ];
+
+
+function applyTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+  localStorage.setItem('motionRunnerTheme', theme);
+  themeToggle.textContent = theme === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+}
+
+function setupThemeToggle() {
+  const savedTheme = localStorage.getItem('motionRunnerTheme');
+  const preferredDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const startTheme = savedTheme || (preferredDark ? 'dark' : 'light');
+  applyTheme(startTheme);
+
+  themeToggle.addEventListener('click', () => {
+    const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+    applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  });
+}
 
 function drawTrack() {
   gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
@@ -497,4 +517,5 @@ renderGame();
 updatePhysicsConcept();
 setInterval(updatePhysicsConcept, EDUCATION_ROTATE_INTERVAL);
 requestAnimationFrame(animationLoop);
+setupThemeToggle();
 setupCamera();
