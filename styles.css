@@ -182,11 +182,15 @@ button:hover {
 }
 
 .game-tagline {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.65rem;
   font-size: 0.85rem;
   color: var(--subtitle-color);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: "Lucida Handwriting", "Segoe Script", cursive;
+}
+
+.game-subtitle {
+  margin-top: 0.25rem;
 }
 
 .theme-toggle {
