@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Motion Runner</title>
+    <title>Shadow Runner</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -26,7 +26,8 @@
       </section>
 
       <section class="panel game-panel">
-        <h1>Motion Runner</h1>
+        <h1 class="game-title">Shadow Runner</h1>
+        <p class="game-tagline">Motion meets physics</p>
         <p class="subtitle">Move your body left and right to dodge obstacles.</p>
         <div class="hud">
           <span id="score">Score: 0</span>
@@ -39,6 +40,7 @@
           <div id="quizChoices" class="quiz-choices"></div>
           <p id="quizFeedback" class="quiz-feedback"></p>
         </section>
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle light and dark mode">☀️ Light mode</button>
         <div class="buttons">
           <button id="startButton">Start game</button>
           <button id="resetButton">Reset</button>
