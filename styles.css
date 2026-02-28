@@ -1,6 +1,42 @@
 :root {
   color-scheme: dark;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --bg-gradient: radial-gradient(circle at top, #2d3452 0%, #121722 60%, #090c15 100%);
+  --text-color: #ecf1ff;
+  --panel-bg: rgba(12, 18, 34, 0.85);
+  --panel-border: rgba(138, 170, 255, 0.2);
+  --subtitle-color: #b6c3f1;
+  --canvas-border: rgba(170, 194, 255, 0.35);
+  --camera-canvas-bg: #02060f;
+  --motion-readout-color: #98f8af;
+  --physics-bg: rgba(19, 39, 30, 0.45);
+  --physics-border: rgba(152, 248, 175, 0.35);
+  --physics-title: #8ef3ab;
+  --concept-color: #ddffe7;
+  --metrics-color: #a2f5bb;
+  --coach-color: #bee8ff;
+  --button-bg: linear-gradient(135deg, #75a7ff, #4f70ff);
+  --button-text: #08102d;
+}
+
+body[data-theme='light'] {
+  color-scheme: light;
+  --bg-gradient: radial-gradient(circle at top, #f5f8ff 0%, #e9eefc 60%, #dce5ff 100%);
+  --text-color: #17213d;
+  --panel-bg: rgba(255, 255, 255, 0.88);
+  --panel-border: rgba(92, 118, 187, 0.25);
+  --subtitle-color: #485b97;
+  --canvas-border: rgba(92, 118, 187, 0.35);
+  --camera-canvas-bg: #dbe5ff;
+  --motion-readout-color: #1d7d3e;
+  --physics-bg: rgba(220, 247, 227, 0.8);
+  --physics-border: rgba(69, 140, 90, 0.35);
+  --physics-title: #25693c;
+  --concept-color: #143227;
+  --metrics-color: #215438;
+  --coach-color: #1f466b;
+  --button-bg: linear-gradient(135deg, #6e8eff, #4a64d6);
+  --button-text: #f5f8ff;
 }
 
 * {
@@ -10,8 +46,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #2d3452 0%, #121722 60%, #090c15 100%);
-  color: #ecf1ff;
+  background: var(--bg-gradient);
+  color: var(--text-color);
 }
 
 .layout {
@@ -23,8 +59,8 @@ body {
 }
 
 .panel {
-  background: rgba(12, 18, 34, 0.85);
-  border: 1px solid rgba(138, 170, 255, 0.2);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 16px;
   padding: 1rem;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
@@ -39,7 +75,7 @@ h2 {
 
 .subtitle {
   margin-top: -0.5rem;
-  color: #b6c3f1;
+  color: var(--subtitle-color);
 }
 
 .hud {
@@ -58,7 +94,7 @@ h2 {
   max-height: 72vh;
   object-fit: contain;
   border-radius: 12px;
-  border: 1px solid rgba(170, 194, 255, 0.35);
+  border: 1px solid var(--canvas-border);
   background: linear-gradient(#1a2138, #0f1425);
 }
 
@@ -72,8 +108,8 @@ button {
   flex: 1;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #75a7ff, #4f70ff);
-  color: #08102d;
+  background: var(--button-bg);
+  color: var(--button-text);
   font-weight: 700;
   padding: 0.6rem;
   cursor: pointer;
@@ -87,9 +123,9 @@ button:hover {
 #motionCanvas {
   width: 100%;
   border-radius: 10px;
-  border: 1px solid rgba(170, 194, 255, 0.35);
+  border: 1px solid var(--canvas-border);
   margin-top: 0.5rem;
-  background: #02060f;
+  background: var(--camera-canvas-bg);
 }
 
 #cameraFeed {
@@ -99,7 +135,7 @@ button:hover {
 }
 
 #movementReadout {
-  color: #98f8af;
+  color: var(--motion-readout-color);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -107,18 +143,18 @@ button:hover {
   margin-top: 0.9rem;
   padding: 0.8rem;
   border-radius: 12px;
-  border: 1px solid rgba(152, 248, 175, 0.35);
-  background: rgba(19, 39, 30, 0.45);
+  border: 1px solid var(--physics-border);
+  background: var(--physics-bg);
 }
 
 .physics-lab h3 {
   margin: 0 0 0.4rem;
-  color: #8ef3ab;
+  color: var(--physics-title);
 }
 
 .concept {
   margin: 0 0 0.5rem;
-  color: #ddffe7;
+  color: var(--concept-color);
   font-size: 0.95rem;
 }
 
@@ -126,14 +162,36 @@ button:hover {
   display: grid;
   gap: 0.35rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #a2f5bb;
+  color: var(--metrics-color);
   font-size: 0.9rem;
 }
 
 .coach-prompt {
   margin: 0.55rem 0 0;
-  color: #bee8ff;
+  color: var(--coach-color);
   font-size: 0.92rem;
+}
+
+
+
+.game-title {
+  margin-bottom: 0.05rem;
+  font-family: "Brush Script MT", "Segoe Script", cursive;
+  font-size: 2.3rem;
+  letter-spacing: 0.03em;
+}
+
+.game-tagline {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--subtitle-color);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.theme-toggle {
+  margin-bottom: 0.75rem;
+  width: 100%;
 }
 
 @media (max-width: 1180px) {
