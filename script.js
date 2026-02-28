@@ -27,20 +27,23 @@ const player = {
   radius: 18,
 };
 
-const MOTION_THRESHOLD = 26;
-const MIN_ACTIVE_PIXELS = 50;
+const MOTION_THRESHOLD = 22;
+const MIN_ACTIVE_PIXELS = 40;
 const PLAYER_MIN_X = 70;
 const PLAYER_MAX_X = 350;
-const PLAYER_FOLLOW_STRENGTH = 0.42;
-const OBSTACLE_BASE_SPEED = 1.6;
-const OBSTACLE_SPEED_VARIANCE = 0.8;
-const OBSTACLE_SPEED_RAMP = 0.012;
-const OBSTACLE_MAX_SPEED = 3.2;
+const PLAYER_FOLLOW_STRENGTH = 0.5;
+const OBSTACLE_BASE_SPEED = 1.85;
+const OBSTACLE_SPEED_VARIANCE = 0.9;
+const OBSTACLE_SPEED_RAMP = 0.015;
+const OBSTACLE_MAX_SPEED = 3.6;
 const OBSTACLE_SPAWN_INTERVAL = 65;
 const COIN_SPAWN_INTERVAL = 210;
 const COIN_SPEED_BASE = 2.2;
 const COIN_SPEED_VARIANCE = 0.7;
 const EDUCATION_ROTATE_INTERVAL = 8000;
+const MOTION_SAMPLE_STEP = 2;
+const MOTION_TOP_CROP = 0.08;
+const MOTION_BOTTOM_CROP = 0.94;
 
 let obstacles = [];
 let coins = [];
@@ -379,24 +382,32 @@ function processMotionFrame() {
   const data = frame.data;
 
   let activePixels = 0;
-  let sumX = 0;
+  let weightedSumX = 0;
+  let totalWeight = 0;
   const currentLuma = new Uint8ClampedArray(motionCanvas.width * motionCanvas.height);
+  const minY = Math.floor(motionCanvas.height * MOTION_TOP_CROP);
+  const maxY = Math.floor(motionCanvas.height * MOTION_BOTTOM_CROP);
 
   for (let i = 0; i < data.length; i += 4) {
     const pixelIndex = i / 4;
     const x = pixelIndex % motionCanvas.width;
+    const y = Math.floor(pixelIndex / motionCanvas.width);
     const luma = Math.round(data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
     currentLuma[pixelIndex] = luma;
 
     const prev = previousLuma ? previousLuma[pixelIndex] : luma;
     const diff = Math.abs(luma - prev);
+    const inTrackingBand = y >= minY && y <= maxY;
+    const sampledPixel = x % MOTION_SAMPLE_STEP === 0 && y % MOTION_SAMPLE_STEP === 0;
 
-    if (diff > MOTION_THRESHOLD) {
+    if (inTrackingBand && sampledPixel && diff > MOTION_THRESHOLD) {
       data[i] = 40;
       data[i + 1] = 240;
       data[i + 2] = 90;
       activePixels += 1;
-      sumX += x;
+      const weight = diff;
+      weightedSumX += x * weight;
+      totalWeight += weight;
     } else {
       const faded = luma * 0.2;
       data[i] = faded;
@@ -409,9 +420,10 @@ function processMotionFrame() {
 
   if (activePixels > MIN_ACTIVE_PIXELS) {
     noMotionFrames = 0;
-    const movementCenter = sumX / activePixels;
+    const movementCenter = totalWeight > 0 ? weightedSumX / totalWeight : motionCanvas.width / 2;
     const normalizedX = movementCenter / motionCanvas.width;
-    smoothedMotionX = smoothedMotionX * 0.6 + normalizedX * 0.4;
+    const followWeight = Math.min(0.65, 0.3 + activePixels / 900);
+    smoothedMotionX = smoothedMotionX * (1 - followWeight) + normalizedX * followWeight;
     player.targetX = mapMotionToTrackX(smoothedMotionX);
     motionReadoutTick += 1;
     if (motionReadoutTick % 8 === 0) {
