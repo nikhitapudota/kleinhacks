@@ -82,4 +82,5 @@ button:hover {
 
 #movementReadout {
   color: #98f8af;
-  font-family: ui-monospace, SFMono-Regular, Menlo, 
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
