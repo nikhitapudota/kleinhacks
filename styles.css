@@ -84,3 +84,36 @@ button:hover {
   color: #98f8af;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+.physics-lab {
+  margin-top: 0.9rem;
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(152, 248, 175, 0.35);
+  background: rgba(19, 39, 30, 0.45);
+}
+
+.physics-lab h3 {
+  margin: 0 0 0.4rem;
+  color: #8ef3ab;
+}
+
+.concept {
+  margin: 0 0 0.5rem;
+  color: #ddffe7;
+  font-size: 0.95rem;
+}
+
+.physics-metrics {
+  display: grid;
+  gap: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #a2f5bb;
+  font-size: 0.9rem;
+}
+
+.coach-prompt {
+  margin: 0.55rem 0 0;
+  color: #bee8ff;
+  font-size: 0.92rem;
+}
