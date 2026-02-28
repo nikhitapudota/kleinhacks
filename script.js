@@ -27,11 +27,11 @@ const player = {
   radius: 18,
 };
 
-const MOTION_THRESHOLD = 22;
+const MOTION_THRESHOLD = 18;
 const MIN_ACTIVE_PIXELS = 40;
 const PLAYER_MIN_X = 70;
 const PLAYER_MAX_X = 350;
-const PLAYER_FOLLOW_STRENGTH = 0.5;
+const PLAYER_FOLLOW_STRENGTH = 0.56;
 const OBSTACLE_BASE_SPEED = 1.85;
 const OBSTACLE_SPEED_VARIANCE = 0.9;
 const OBSTACLE_SPEED_RAMP = 0.015;
@@ -44,9 +44,10 @@ const EDUCATION_ROTATE_INTERVAL = 8000;
 const MOTION_SAMPLE_STEP = 2;
 const MOTION_TOP_CROP = 0.08;
 const MOTION_BOTTOM_CROP = 0.94;
-const JUMP_DETECTION_DELTA = 0.035;
-const JUMP_Y_THRESHOLD = 0.5;
-const JUMP_COOLDOWN_MS = 900;
+const JUMP_DETECTION_DELTA = 0.018;
+const JUMP_Y_THRESHOLD = 0.62;
+const JUMP_COOLDOWN_MS = 650;
+const MAX_JUMP_ACTIVE_PIXELS = 1800;
 
 let obstacles = [];
 let coins = [];
@@ -360,12 +361,13 @@ function mapMotionToTrackX(normalizedX) {
 
 function updatePlayerPosition() {
   const dx = player.targetX - player.x;
-  if (Math.abs(dx) < 0.5) {
+  if (Math.abs(dx) < 0.35) {
     player.x = player.targetX;
     return;
   }
 
-  player.x += dx * PLAYER_FOLLOW_STRENGTH;
+  const adaptiveStrength = Math.min(0.84, PLAYER_FOLLOW_STRENGTH + Math.abs(dx) / 140);
+  player.x += dx * adaptiveStrength;
 }
 
 
@@ -415,9 +417,10 @@ function maybeDetectJump(now, normalizedY, activePixels) {
   const movedUpQuickly = previousMotionY - normalizedY > JUMP_DETECTION_DELTA;
   const isBodyHighEnough = normalizedY < JUMP_Y_THRESHOLD;
   const cooldownPassed = now - lastJumpTime > JUMP_COOLDOWN_MS;
-  const enoughMotion = activePixels > MIN_ACTIVE_PIXELS * 2;
+  const enoughMotion = activePixels > MIN_ACTIVE_PIXELS * 1.35;
+  const likelyCameraShake = activePixels > MAX_JUMP_ACTIVE_PIXELS;
 
-  if (movedUpQuickly && isBodyHighEnough && cooldownPassed && enoughMotion) {
+  if (movedUpQuickly && isBodyHighEnough && cooldownPassed && enoughMotion && !likelyCameraShake) {
     lastJumpTime = now;
     triggerJumpColorShift();
   }
@@ -484,9 +487,12 @@ function processMotionFrame() {
     const normalizedX = movementCenter / motionCanvas.width;
     const movementCenterY = totalWeight > 0 ? weightedSumY / totalWeight : motionCanvas.height / 2;
     const normalizedY = movementCenterY / motionCanvas.height;
-    const followWeight = Math.min(0.65, 0.3 + activePixels / 900);
-    smoothedMotionX = smoothedMotionX * (1 - followWeight) + normalizedX * followWeight;
-    smoothedMotionY = smoothedMotionY * 0.7 + normalizedY * 0.3;
+    const followWeight = Math.min(0.82, 0.45 + activePixels / 700);
+    const deltaX = normalizedX - smoothedMotionX;
+    if (Math.abs(deltaX) > 0.002) {
+      smoothedMotionX += deltaX * followWeight;
+    }
+    smoothedMotionY = smoothedMotionY * 0.55 + normalizedY * 0.45;
     player.targetX = mapMotionToTrackX(smoothedMotionX);
     maybeDetectJump(performance.now(), smoothedMotionY, activePixels);
     motionReadoutTick += 1;
@@ -498,7 +504,7 @@ function processMotionFrame() {
     }
   } else {
     noMotionFrames += 1;
-    if (noMotionFrames > 10) {
+    if (noMotionFrames > 6) {
       movementReadout.textContent = 'Movement: move left/right to control the character';
     }
   }
