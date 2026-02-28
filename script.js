@@ -48,6 +48,7 @@ const JUMP_DETECTION_DELTA = 0.018;
 const JUMP_Y_THRESHOLD = 0.62;
 const JUMP_COOLDOWN_MS = 650;
 const MAX_JUMP_ACTIVE_PIXELS = 1800;
+const POST_QUIZ_GRACE_MS = 3000;
 
 let obstacles = [];
 let coins = [];
@@ -74,6 +75,7 @@ let smoothedMotionY = 0.55;
 let previousMotionY = 0.55;
 let lastJumpTime = 0;
 let colorThemeIndex = 0;
+let postQuizGraceUntil = 0;
 const colorThemes = [
   {
     trackTop: '#1a2138',
@@ -292,7 +294,17 @@ function updateGame() {
   moveCoins();
   checkCoinCollection();
 
-  if (checkCollision()) {
+  const graceMsLeft = postQuizGraceUntil - performance.now();
+  if (graceMsLeft <= 0) {
+    if (statusLabel.textContent.startsWith('Status: Shield')) {
+      statusLabel.textContent = 'Status: Running';
+    }
+  } else {
+    const secondsLeft = Math.ceil(graceMsLeft / 1000);
+    statusLabel.textContent = `Status: Shield ${secondsLeft}s`;
+  }
+
+  if (graceMsLeft <= 0 && checkCollision()) {
     gameOver = true;
     isRunning = false;
     statusLabel.textContent = 'Status: Game over — press reset.';
@@ -341,8 +353,9 @@ function openQuiz() {
         quizOverlay.classList.add('hidden');
         quizActive = false;
         if (!gameOver) {
+          postQuizGraceUntil = performance.now() + POST_QUIZ_GRACE_MS;
           isRunning = true;
-          statusLabel.textContent = 'Status: Running';
+          statusLabel.textContent = 'Status: Shield 3s';
           requestAnimationFrame(updateGame);
         }
       }, 900);
@@ -575,6 +588,7 @@ function resetGame() {
   previousMotionY = 0.55;
   lastJumpTime = 0;
   colorThemeIndex = 0;
+  postQuizGraceUntil = 0;
   scoreLabel.textContent = 'Score: 0';
   quizActive = false;
   quizOverlay.classList.add('hidden');
