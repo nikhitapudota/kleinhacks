@@ -44,6 +44,9 @@ const EDUCATION_ROTATE_INTERVAL = 8000;
 const MOTION_SAMPLE_STEP = 2;
 const MOTION_TOP_CROP = 0.08;
 const MOTION_BOTTOM_CROP = 0.94;
+const JUMP_DETECTION_DELTA = 0.035;
+const JUMP_Y_THRESHOLD = 0.5;
+const JUMP_COOLDOWN_MS = 900;
 
 let obstacles = [];
 let coins = [];
@@ -66,6 +69,36 @@ let noMotionFrames = 0;
 let lastMetricUpdate = 0;
 let metricReadoutTick = 0;
 let highScore = Number.parseInt(localStorage.getItem('motionRunnerHighScore') || '0', 10);
+let smoothedMotionY = 0.55;
+let previousMotionY = 0.55;
+let lastJumpTime = 0;
+let colorThemeIndex = 0;
+const colorThemes = [
+  {
+    trackTop: '#1a2138',
+    trackBottom: '#0f1425',
+    lane: 'rgba(255,255,255,0.15)',
+    player: '#7ef5a5',
+  },
+  {
+    trackTop: '#2d1f4d',
+    trackBottom: '#13112f',
+    lane: 'rgba(201,166,255,0.2)',
+    player: '#c79bff',
+  },
+  {
+    trackTop: '#1f3a4d',
+    trackBottom: '#0f2430',
+    lane: 'rgba(146,233,255,0.2)',
+    player: '#69eaff',
+  },
+  {
+    trackTop: '#4a2f1f',
+    trackBottom: '#2d170f',
+    lane: 'rgba(255,205,148,0.22)',
+    player: '#ffc86b',
+  },
+];
 const physicsConcepts = [
   {
     title: 'Velocity',
@@ -125,11 +158,15 @@ function setupThemeToggle() {
 }
 
 function drawTrack() {
+  const theme = colorThemes[colorThemeIndex % colorThemes.length];
   gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-  gameCtx.fillStyle = '#161e35';
+  const trackGradient = gameCtx.createLinearGradient(0, 0, 0, gameCanvas.height);
+  trackGradient.addColorStop(0, theme.trackTop);
+  trackGradient.addColorStop(1, theme.trackBottom);
+  gameCtx.fillStyle = trackGradient;
   gameCtx.fillRect(50, 0, 320, gameCanvas.height);
 
-  gameCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+  gameCtx.strokeStyle = theme.lane;
   gameCtx.lineWidth = 3;
   gameCtx.setLineDash([16, 20]);
   gameCtx.beginPath();
@@ -142,7 +179,8 @@ function drawTrack() {
 }
 
 function drawPlayer() {
-  gameCtx.fillStyle = '#7ef5a5';
+  const theme = colorThemes[colorThemeIndex % colorThemes.length];
+  gameCtx.fillStyle = theme.player;
   gameCtx.beginPath();
   gameCtx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
   gameCtx.fill();
@@ -367,6 +405,26 @@ function maybeRecordReaction(now) {
   }
 }
 
+
+function triggerJumpColorShift() {
+  colorThemeIndex = (colorThemeIndex + 1) % colorThemes.length;
+  coachPromptLabel.textContent = 'Coach: Jump detected! Nice vertical displacement.';
+}
+
+function maybeDetectJump(now, normalizedY, activePixels) {
+  const movedUpQuickly = previousMotionY - normalizedY > JUMP_DETECTION_DELTA;
+  const isBodyHighEnough = normalizedY < JUMP_Y_THRESHOLD;
+  const cooldownPassed = now - lastJumpTime > JUMP_COOLDOWN_MS;
+  const enoughMotion = activePixels > MIN_ACTIVE_PIXELS * 2;
+
+  if (movedUpQuickly && isBodyHighEnough && cooldownPassed && enoughMotion) {
+    lastJumpTime = now;
+    triggerJumpColorShift();
+  }
+
+  previousMotionY = normalizedY;
+}
+
 function processMotionFrame() {
   if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
     requestAnimationFrame(processMotionFrame);
@@ -383,6 +441,7 @@ function processMotionFrame() {
 
   let activePixels = 0;
   let weightedSumX = 0;
+  let weightedSumY = 0;
   let totalWeight = 0;
   const currentLuma = new Uint8ClampedArray(motionCanvas.width * motionCanvas.height);
   const minY = Math.floor(motionCanvas.height * MOTION_TOP_CROP);
@@ -407,6 +466,7 @@ function processMotionFrame() {
       activePixels += 1;
       const weight = diff;
       weightedSumX += x * weight;
+      weightedSumY += y * weight;
       totalWeight += weight;
     } else {
       const faded = luma * 0.2;
@@ -422,12 +482,16 @@ function processMotionFrame() {
     noMotionFrames = 0;
     const movementCenter = totalWeight > 0 ? weightedSumX / totalWeight : motionCanvas.width / 2;
     const normalizedX = movementCenter / motionCanvas.width;
+    const movementCenterY = totalWeight > 0 ? weightedSumY / totalWeight : motionCanvas.height / 2;
+    const normalizedY = movementCenterY / motionCanvas.height;
     const followWeight = Math.min(0.65, 0.3 + activePixels / 900);
     smoothedMotionX = smoothedMotionX * (1 - followWeight) + normalizedX * followWeight;
+    smoothedMotionY = smoothedMotionY * 0.7 + normalizedY * 0.3;
     player.targetX = mapMotionToTrackX(smoothedMotionX);
+    maybeDetectJump(performance.now(), smoothedMotionY, activePixels);
     motionReadoutTick += 1;
     if (motionReadoutTick % 8 === 0) {
-      movementReadout.textContent = `Movement: x=${smoothedMotionX.toFixed(2)} active=${Math.round(activePixels / 20) * 20}`;
+      movementReadout.textContent = `Movement: x=${smoothedMotionX.toFixed(2)} y=${smoothedMotionY.toFixed(2)} active=${Math.round(activePixels / 20) * 20}`;
     }
     if (!gameOver && !isRunning && !quizActive) {
       statusLabel.textContent = 'Status: Tracking movement';
@@ -501,6 +565,10 @@ function resetGame() {
   reactionMs = null;
   noMotionFrames = 0;
   motionReadoutTick = 0;
+  smoothedMotionY = 0.55;
+  previousMotionY = 0.55;
+  lastJumpTime = 0;
+  colorThemeIndex = 0;
   scoreLabel.textContent = 'Score: 0';
   quizActive = false;
   quizOverlay.classList.add('hidden');
