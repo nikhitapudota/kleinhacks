@@ -150,3 +150,49 @@ button:hover {
     max-height: none;
   }
 }
+
+
+#movementReadout,
+.concept,
+.coach-prompt {
+  line-height: 1.35;
+  min-height: 2.2em;
+}
+
+.game-panel {
+  position: relative;
+}
+
+.quiz-overlay {
+  position: absolute;
+  inset: 24% 10% auto;
+  background: rgba(8, 13, 28, 0.96);
+  border: 1px solid rgba(255, 216, 93, 0.8);
+  border-radius: 12px;
+  padding: 0.9rem;
+  z-index: 5;
+}
+
+.hidden {
+  display: none;
+}
+
+.quiz-choices {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.quiz-choice {
+  width: 100%;
+  border: 1px solid rgba(138, 170, 255, 0.35);
+  border-radius: 8px;
+  background: rgba(56, 80, 180, 0.35);
+  color: #eaf0ff;
+  padding: 0.45rem;
+  font-weight: 600;
+}
+
+.quiz-feedback {
+  margin: 0.55rem 0 0;
+  color: #c7ffe2;
+}
