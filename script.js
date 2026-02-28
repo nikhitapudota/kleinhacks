@@ -1,4 +1,3 @@
-
 const gameCanvas = document.getElementById('gameCanvas');
 const gameCtx = gameCanvas.getContext('2d');
 const motionCanvas = document.getElementById('motionCanvas');
@@ -240,3 +239,4 @@ resetButton.addEventListener('click', resetGame);
 
 renderGame();
 setupCamera();
+
